@@ -1,0 +1,50 @@
+---
+title: "Assignment 4, Task 2"
+author: "Gabriel Ingman"
+format: 
+  html:
+    theme: cyborg
+    code-fold: true
+    toc: true
+    number-sections: false
+    embed-resources: true
+editor: visual
+execute:
+  echo: true
+  message: false
+  warning: false
+---
+
+# Agglomerative Hierarchical Clustering
+
+![Godzilla off the coast of Santa Barbara (Microsoft CoPilot AI generated)](santa_barbara_coastline_godzilla.jpeg)
+
+## 
+
+## Data Overview & Summary
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+## Pseudocode for Task 1
+
+This is what needs to happen to succeed at this task.
+
+## Real Code for Task 1
+
+### Part 1
+
+`{r} 1 + 1}`
+
+asdf
+
+### Part 2
+
+You can add options to executable code like this
+
+`{r} #| echo: false 2 * 2}`
+
+The `echo: false` option disables the printing of code (only output is displayed).
+
+## Data Citation
+
+Santa Barbara Coastal LTER and J. Melack. 2019. SBC LTER: Land: Stream chemistry in the Santa Barbara Coastal drainage area, ongoing since 2000 ver 16. Environmental Data Initiative. <https://doi.org/10.6073/pasta/67a558a24ceed9a0a5bf5e46ab841174>.

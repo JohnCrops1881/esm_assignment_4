@@ -1,0 +1,166 @@
+---
+title: "Assignment 4, Task 1"
+author: "Gabriel Ingman"
+format: 
+  html:
+    theme: cyborg
+    code-fold: true
+    toc: true
+    number-sections: false
+    embed-resources: true
+editor: visual
+execute:
+  echo: true
+  message: false
+  warning: false
+---
+
+# Principle Components Analysis (PCA)
+
+![Nutrient man (Microsoft CoPilot AI generated)](nutrient_man.jpeg){fig-align="center" width="265"}
+
+## Data Overview & Summary
+
+The data I'm working with comes from the United States Department of Agriculture. The data describes the nutrient components of food items in different categories.
+
+For this task, I will be looking at the USDA nutrient data set and running a Principle Components Analysis (PCA) to determine if there is a relationship between the protein, fats, and carbohydrates and the caloric (kcal) value of a food item in the following categories: Meals, Entrees, and Side Dishes; Snacks; and Sweets.
+
+## Pseudocode for Task 1
+
+To start, I loaded in the nutrient data. Then, I filtered the data to get only the columns I needed for analysis: protein (g), fat (g), carbs (g), and kcal, along with the identifier data: ID number, food group, and description. I made sure to filter out any N/A values that might disrupt the PCA.
+
+Then, I followed along with the lab 8 code to create a PCA object, using facet wrapping, to determine what the relationships between the variables are. Following that, I made a biplot.
+
+## Real Code for Task 1
+
+### Part 1: Setup
+
+```{r setup}
+
+library(tidyverse)
+library(here)
+library(janitor)
+library(ggfortify)
+library(patchwork)
+
+```
+
+```{r datafiltering}
+
+nutrients_raw <- read_csv(here('data', 'usda_nutrients.csv')) %>% 
+  clean_names()
+
+#631 observations seems reasonable
+
+nutrients_filtered <- nutrients_raw %>% 
+  select(food_group, descrip, energy_kcal, protein_g, fat_g, carb_g) %>% 
+  filter(food_group == 'Meals, Entrees, and Side Dishes' | food_group == 'Snacks' | food_group == 'Sweets') 
+
+```
+
+### Part 2: PCA
+
+You can add options to executable code like this
+
+```{r pivotlonger}
+
+#Following along witht the lab, I will convert the filtered data into continuous numeric data with no NA values, and so that every numeric variables has a mean of 0 and a standard deviation of 1.
+
+nutrients_filt_long <- nutrients_filtered %>% 
+  pivot_longer(names_to = 'name', values_to = 'values', where(is.numeric))
+  
+```
+
+```{r ggplotwithfacetwrapping}
+
+ggplot(nutrients_filt_long, aes(x = values)) +
+  geom_histogram() +
+  facet_wrap(~name, scales = 'free_x')
+```
+
+```{r pca}
+
+nutrient_pca <- nutrients_filtered %>% 
+  select(where(is.numeric)) %>% 
+  prcomp(scale = TRUE)
+
+nutrient_pca
+
+
+```
+
+-   `sdev` is the standard deviation (square root of explained variance captured by each principal component)
+-   `rotation` is the translation of base variables to principal components (and vice versa)
+-   `center` is the factor applied for centering of the variables
+-   `scale` is the factor for rescaling of the variables
+-   `x` is a dataframe of all observations transformed to their new values in PC1, 2, etc.
+
+```{r loadings}
+
+nutrient_pca$rotation
+
+```
+
+```{r ggplotexploration}
+
+fat_plot <- ggplot() +
+  geom_point(data = nutrients_filtered, aes(x = energy_kcal, y = fat_g, color = food_group)) +
+  theme_minimal() +
+  labs(title = 'Fat (g) vs Calorie (kcal)')
+
+pro_plot <- ggplot() +
+  geom_point(data = nutrients_filtered, aes(x = energy_kcal, y = protein_g, color = food_group)) +
+  theme_minimal() +
+  labs(title = 'Protein (g) vs Calorie (kcal)')
+
+carb_plot <- ggplot() +
+  geom_point(data = nutrients_filtered, aes(x = energy_kcal, y = carb_g, color = food_group)) +
+  theme_minimal() +
+  labs(title = 'Carbs (g) vs Calorie (kcal)')
+
+fat_plot
+pro_plot
+carb_plot
+
+```
+
+Upon visual inspection, it would seem that there is a linear relationship between fat and caloric content (kcal) and carbohydrates and caloric content. Protein does not seem to affect caloric content as much as the other two variables.
+
+```{r autoplotsrollout}
+
+nutrient_biplot <- autoplot(nutrient_pca,
+         data = nutrients_filtered,
+         loadings = TRUE,
+         colour = 'food_group',
+      	loadings.colour = "black",
+     	loadings.label.colour = "black",
+     	loadings.label.vjust = -0.5
+     	) +
+  scale_color_discrete() +
+  theme_minimal() +
+  labs(title = 'Principle Component Analysis for USDA Food Data',
+  subtitle = 'Analyzing the relationship between caloric value (kcal), fat, carbs and protein (all in g) for Entrees, \nSnacks, and Sweets',
+  color = 'Food Group') +
+  theme(plot.title = element_text(family = '', face = 'bold', size = 18),
+        plot.subtitle = element_text(size = 10))
+
+nutrient_biplot # + plot_annotation(
+#   title = 'Principle Component Analysis for USDA Food Data',
+#   subtitle = 'Analyzing the relationship between caloric value (kcal), fat, carbs and protein (all in g) for Entrees, /nSnacks, and Sweets'
+# )
+
+```
+
+## Takeaways from PCA Analysis
+
+-   It's no surprise that the autoplot chose PC1 and PC2 for the biplot, considering their values, but I was expecting them to have a closer fit than 52.33% and 30.8%, respectively. This was in contrast to my second takeaway, where I expected less correlation and found more.
+
+-   It seems that all four variables are interrelated: the fat, carbohydrate, protein, and kcal variable arrows are all pointing the same direction without much distance between them.
+
+-   The values for Meals, Entrees, and Sides trend towards the higher values of PC1, while staying grouped in the higher values of PC2. Snacks is the opposite, trending towards the lower values of PC1 while still nestled the higher values of PC2. Sweets bridges the middle, with values trending on both the lower and higher side of PC1.
+
+## Data Citation
+
+U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, 2019. fdc.nal.usda.gov.
+
+## 
