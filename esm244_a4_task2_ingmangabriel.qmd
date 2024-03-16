@@ -19,32 +19,131 @@ execute:
 
 ![Godzilla off the coast of Santa Barbara (Microsoft CoPilot AI generated)](santa_barbara_coastline_godzilla.jpeg)
 
-## 
-
 ## Data Overview & Summary
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+From the abstract: 'The data package contains stream chemistry measurements taken in Santa Barbara area watersheds, beginning in the year 2000... Stream water samples are collected weekly during non-storm flows in winter, and bi-weekly during summer. During winter storms, samples are collected hourly (rising limb) or at 2-4 hour intervals (falling limb)."
+
+The purpose of this task is to perform hierarchical clustering (with complete linkage) on the stream dataset, and create a dendrogram that explores relationships between observations in the dataset. Specifically, we are looking for clusters, or places on a graph where observations group together.
 
 ## Pseudocode for Task 1
 
-This is what needs to happen to succeed at this task.
+First, I load in the data and clean it for analysis by accounting for the -999 values, by converting them in to N/A values. Then, I had to deal with the numerous N/A values. First, I visually inspected the data to determine where the N/A values were happening. Then, I filtered out any columns with more than 50% N/A values. Once that was done, I had to figure out what to do with the N/A values that remained. I decided to summarize them using the na.rm() command.
+
+Then, I followed the lab guidelines to create a Euclidian distance object, and the NbClust() package to create centroids, and ran a model to determine the best groups for the dataset.
 
 ## Real Code for Task 1
 
-### Part 1
+### Part 1: Data Cleaning
 
-`{r} 1 + 1}`
+```{r setup}
 
-asdf
+library(tidyverse)
+library(here)
+library(janitor)
+library(NbClust)
+library(cluster)
+library(factoextra)
+library(dendextend)
+library(ggdendro)
+library(patchwork)
 
-### Part 2
+```
 
-You can add options to executable code like this
+```{r data}
 
-`{r} #| echo: false 2 * 2}`
+#loading in data, converting -999 values to NA
+sb_stream_raw <- read.csv(here('data', 'sbc_lter_registered_stream_chemistry.csv')) %>% 
+  clean_names() %>% 
+  mutate(across(where(is.numeric), ~na_if(., -999)))
 
-The `echo: false` option disables the printing of code (only output is displayed).
+#summary(sb_stream_raw)
+#nh4_u_m NAs: 203
+#no3_u_m NAs: 149
+#po4_u_m NAs: 167
+#tdn_u_m NAs: 5034
+#tdp_u_m NAs: 5801
+#tpc_u_m NAs: 16521
+#tpn_u_m NAs: 16521
+#tpp_u_m NAs: 17046
+#tss_mgper_liter NAs: 14376
+#spec_cond_u_spercm NAs: 924
+
+```
+
+```{r nana}
+
+#defining a 50% threshold object. we will need this later.
+threshold <- 0.5
+
+na_values <- colMeans(is.na(sb_stream_raw))
+
+#Filtered the dataset to only contain numeric columns with 50% or less NA values as per our threshold.
+
+sb_stream_filtered <- sb_stream_raw[, na_values <= threshold]
+
+```
+
+```{r NAsummarize}
+
+#using na.rm = TRUE to deal with the NA values, and made proper titles
+
+sb_stream_grouped <- sb_stream_filtered %>% 
+  group_by(site_code) %>% 
+  summarize(
+    "Ammonium" = mean(nh4_u_m, na.rm = TRUE),
+    "Nitrate" = mean(no3_u_m, na.rm = TRUE),
+    "Phosphorous" = mean(po4_u_m, na.rm = TRUE),
+    "Dissolved Nitrogen" = mean(tdn_u_m, na.rm = TRUE),
+    "Dissolved Phosphorous" = mean(tdp_u_m, na.rm = TRUE),
+    "Specific Conductivity" = mean(spec_cond_u_spercm, na.rm = TRUE)) %>% 
+  drop_na()
+
+```
+
+### Part 2: Clustering
+
+```{r scale}
+
+#selecting only the numeric columns for the dataset I will use for clustering
+
+sb_stream_scale <- sb_stream_grouped %>% 
+  select(2:7) %>% 
+  scale()
+
+#add in the titles again
+
+row.names(sb_stream_scale) <- sb_stream_grouped$site_code
+```
+
+```{r euclidian}
+
+
+distance_object <- dist(sb_stream_scale, method = 'euclidean')
+
+sbs_clusters <- hclust(distance_object, method = 'complete')
+```
+
+```{r dendrogram}
+
+sbs_dendrogram <- ggdendrogram(sbs_clusters,
+                               rotate = TRUE) +
+  theme_light() +
+  labs(x = 'Site Code', y = 'Distance')
+
+sbs_dendrogram + plot_annotation(
+  title = 'Santa Barbara Stream Site Analysis Dendrogram'
+)
+
+```
+
+## Takeaways from Dendrogram
+
+-   The most similar sites, i.e. the ones with the least Euclidean distance between them, are: RS02 & HO00, and SP02 & MC00.
+
+-   The most dissimilar sites, i.e. the ones with the most Euclidean distance between them, are: DV01 and every other site. A close second is site BC02.
+
+-   I'd be curious to learn which of the variables- chemical concentration, conductivity, etc- impacted sites DV01 and BC02 being so dissimilar to the rest of the sites used for analysis in this task.
 
 ## Data Citation
 
-Santa Barbara Coastal LTER and J. Melack. 2019. SBC LTER: Land: Stream chemistry in the Santa Barbara Coastal drainage area, ongoing since 2000 ver 16. Environmental Data Initiative. <https://doi.org/10.6073/pasta/67a558a24ceed9a0a5bf5e46ab841174>.
+Santa Barbara Coastal LTER and J. Melack. 2019. SBC LTER: Land: Stream chemistry in the Santa Barbara Coastal drainage area, ongoing since 2000 ver 16. Environmental Data Initiative. https://doi.org/10.6073/pasta/67a558a24ceed9a0a5bf5e46ab841174 (Accessed 2024-03-16).
